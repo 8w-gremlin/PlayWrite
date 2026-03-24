@@ -1,0 +1,12 @@
+{
+  "name": "pbp-vault",
+  "version": "1.0.0",
+  "description": "Play-by-Post Character Vault",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^31.0.0"
+  }
+}

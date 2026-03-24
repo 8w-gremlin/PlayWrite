@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Character Vault</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1a1714;
+    --ink-mid: #3d3830;
+    --ink-soft: #6b6458;
+    --ink-faint: #9c9188;
+    --parchment: #f4efe6;
+    --parchment-dark: #ede6d8;
+    --parchment-darker: #e0d7c6;
+    --gold: #8b6914;
+    --gold-light: #c9971e;
+    --gold-pale: #f0d898;
+    --red-dark: #6b1a1a;
+    --red-mid: #8b2222;
+    --green-dark: #1a3d2b;
+    --border: rgba(139,105,20,0.3);
+    --border-strong: rgba(139,105,20,0.6);
+  }
+
+  body { font-family: 'Crimson Pro', Georgia, serif; background: var(--parchment-dark); color: var(--ink); height: 100vh; overflow: hidden; }
+  .app { display: flex; height: 100vh; }
+
+  /* SIDEBAR */
+  .sidebar { width: 260px; min-width: 260px; background: var(--parchment-darker); border-right: 1px solid var(--border-strong); display: flex; flex-direction: column; }
+  .sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid var(--border); }
+  .vault-title { font-family: 'Cinzel', serif; font-size: 15px; font-weight: 600; color: var(--gold); letter-spacing: 0.08em; text-transform: uppercase; }
+  .vault-subtitle { font-size: 11px; color: var(--ink-faint); margin-top: 2px; font-style: italic; }
+  .char-list { flex: 1; overflow-y: auto; padding: 8px; }
+  .game-group { margin-bottom: 4px; }
+  .game-group-header { display: flex; align-items: center; justify-content: space-between; padding: 5px 8px 3px; cursor: pointer; user-select: none; }
+  .game-group-header:hover .game-group-label { color: var(--gold-light); }
+  .game-group-label { font-family: 'Cinzel', serif; font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); }
+  .group-chevron { font-size: 9px; color: var(--ink-faint); transition: transform 0.15s; display: inline-block; }
+  .group-chevron.collapsed { transform: rotate(-90deg); }
+  .char-item { position: relative; padding: 8px 12px 8px 12px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; margin-bottom: 3px; transition: all 0.15s; }
+  .char-item:hover { background: var(--parchment); border-color: var(--border); }
+  .char-item.active { background: var(--parchment); border-color: var(--border-strong); box-shadow: inset 2px 0 0 var(--gold); }
+  .char-name { font-family: 'Cinzel', serif; font-size: 13px; font-weight: 600; color: var(--ink); padding-right: 20px; }
+  .char-meta { font-size: 11px; color: var(--ink-soft); margin-top: 2px; font-style: italic; }
+  .char-warning { font-size: 10px; color: var(--gold-light); margin-top: 3px; }
+  .char-move-btns { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); display: none; flex-direction: column; gap: 0; }
+  .char-item:hover .char-move-btns { display: flex; }
+  .char-move-btn { background: none; border: none; cursor: pointer; color: var(--ink-faint); font-size: 10px; padding: 1px 3px; line-height: 1.2; transition: color 0.1s; }
+  .char-move-btn:hover { color: var(--gold); }
+  .char-move-btn:disabled { opacity: 0.2; cursor: default; }
+  .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+
+  /* MAIN */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--parchment); }
+  .main-header { padding: 16px 24px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .main-title { font-family: 'Cinzel', serif; font-size: 18px; font-weight: 600; color: var(--ink); flex: 1; }
+  .tab-bar { display: flex; gap: 4px; }
+  .tab { padding: 6px 14px; font-family: 'Cinzel', serif; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 4px; cursor: pointer; border: 1px solid transparent; color: var(--ink-soft); transition: all 0.15s; background: transparent; }
+  .tab:hover { color: var(--ink); border-color: var(--border); }
+  .tab.active { background: var(--ink); color: var(--parchment); border-color: var(--ink); }
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+  .status-bar { padding: 8px 24px; border-top: 1px solid var(--border); font-size: 12px; color: var(--ink-faint); font-style: italic; min-height: 36px; display: flex; align-items: center; }
+
+  /* BUTTONS */
+  .btn { width: 100%; padding: 8px 12px; font-family: 'Cinzel', serif; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 5px; cursor: pointer; transition: all 0.15s; border: 1px solid; }
+  .btn-gold { background: transparent; color: var(--gold); border-color: var(--gold); }
+  .btn-gold:hover { background: var(--gold); color: var(--parchment); }
+  .btn-ink { background: var(--ink); color: var(--parchment); border-color: var(--ink); }
+  .btn-ink:hover { background: var(--ink-mid); }
+  .btn-green { background: var(--green-dark); color: var(--parchment); border-color: var(--green-dark); }
+  .btn-green:hover { opacity: 0.85; }
+  .btn-red { background: transparent; color: var(--red-mid); border-color: var(--red-mid); font-size: 10px; padding: 6px 10px; }
+  .btn-red:hover { background: var(--red-mid); color: var(--parchment); }
+  .btn-sm { width: auto; padding: 5px 10px; font-size: 10px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+
+  /* FORMS */
+  label { display: block; font-family: 'Cinzel', serif; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 5px; margin-top: 16px; }
+  label:first-of-type { margin-top: 0; }
+  input[type="text"], textarea { width: 100%; padding: 9px 12px; font-family: 'Crimson Pro', Georgia, serif; font-size: 15px; color: var(--ink); background: var(--parchment-dark); border: 1px solid var(--border-strong); border-radius: 5px; outline: none; transition: border-color 0.15s; resize: vertical; }
+  input[type="text"]:focus, textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(139,105,20,0.15); }
+  .char-limit { font-size: 11px; text-align: right; margin-top: 3px; }
+  .char-limit.ok { color: var(--ink-faint); }
+  .char-limit.warn { color: var(--gold-light); }
+  .char-limit.over { color: var(--red-mid); font-weight: 500; }
+  .field-hint { font-size: 12px; color: var(--ink-faint); font-style: italic; margin-top: 4px; line-height: 1.4; }
+
+  /* LAYOUT */
+  .section-divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  .section-title { font-family: 'Cinzel', serif; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+  .section-desc { font-size: 13px; color: var(--ink-soft); font-style: italic; margin-bottom: 16px; line-height: 1.5; }
+  .row { display: flex; gap: 12px; }
+  .row > * { flex: 1; }
+  .mt { margin-top: 16px; }
+
+  /* LORE */
+  .lore-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .lore-item { background: var(--parchment-dark); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start; }
+  .lore-item-body { flex: 1; }
+  .lore-item-name { font-family: 'Cinzel', serif; font-size: 12px; font-weight: 600; color: var(--ink); }
+  .lore-item-text { font-size: 13px; color: var(--ink-soft); margin-top: 2px; line-height: 1.4; }
+
+  /* POST TAB */
+  .context-strip { background: var(--parchment-darker); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-size: 13px; color: var(--ink-soft); font-style: italic; line-height: 1.5; }
+  .context-strip strong { font-style: normal; font-family: 'Cinzel', serif; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold); display: block; margin-bottom: 4px; }
+  .token-estimate { font-size: 11px; color: var(--ink-faint); text-align: right; margin-top: 6px; font-style: italic; }
+  .lore-toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .lore-toggle { padding: 4px 10px; font-size: 12px; font-family: 'Crimson Pro', serif; border: 1px solid var(--border-strong); border-radius: 20px; cursor: pointer; background: transparent; color: var(--ink-soft); transition: all 0.15s; }
+  .lore-toggle.on { background: var(--ink); color: var(--parchment); border-color: var(--ink); }
+
+  /* PROMPT PREVIEW */
+  .prompt-preview { background: var(--parchment-dark); border: 1px solid var(--border-strong); border-radius: 6px; padding: 16px 18px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; color: var(--ink-soft); font-style: italic; max-height: 260px; overflow-y: auto; }
+
+  /* RESPONSE BOX */
+  .response-box { background: var(--parchment-dark); border: 1px solid var(--border-strong); border-radius: 6px; padding: 16px 18px; font-size: 16px; line-height: 1.75; min-height: 120px; white-space: pre-wrap; font-style: italic; color: var(--ink); }
+  .response-box.empty { color: var(--ink-faint); font-size: 14px; }
+
+  /* STEP BADGES */
+  .step { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; }
+  .step-num { width: 28px; height: 28px; min-width: 28px; border-radius: 50%; border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: 11px; font-weight: 600; color: var(--gold); margin-top: 2px; }
+  .step-body { flex: 1; }
+  .step-label { font-family: 'Cinzel', serif; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+
+  /* HISTORY */
+  .history-item { background: var(--parchment-dark); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; margin-bottom: 12px; }
+  .history-meta { font-family: 'Cinzel', serif; font-size: 10px; color: var(--ink-faint); letter-spacing: 0.06em; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .history-text { font-size: 15px; line-height: 1.7; font-style: italic; color: var(--ink); white-space: pre-wrap; max-height: 180px; overflow-y: auto; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(26,23,20,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal { background: var(--parchment); border: 1px solid var(--border-strong); border-radius: 10px; padding: 28px; max-width: 540px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(26,23,20,0.3); }
+  .modal h3 { font-family: 'Cinzel', serif; font-size: 16px; font-weight: 600; color: var(--gold); margin-bottom: 6px; }
+  .modal p { font-size: 14px; color: var(--ink-soft); font-style: italic; margin-bottom: 18px; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+  .prompt-box { background: var(--parchment-dark); border: 1px solid var(--border-strong); border-radius: 6px; padding: 14px 16px; font-size: 13px; line-height: 1.6; color: var(--ink); white-space: pre-wrap; max-height: 340px; overflow-y: auto; }
+
+  /* WELCOME */
+  .welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 40px; }
+  .welcome-seal { width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--border-strong); display: flex; align-items: center; justify-content: center; margin-bottom: 24px; color: var(--gold); font-size: 32px; }
+  .welcome h2 { font-family: 'Cinzel', serif; font-size: 20px; font-weight: 600; color: var(--ink); margin-bottom: 12px; }
+  .welcome p { font-size: 16px; color: var(--ink-soft); line-height: 1.6; max-width: 400px; font-style: italic; margin-bottom: 8px; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="vault-title">Character Vault</div>
+      <div class="vault-subtitle">Play-by-Post Writing Tool</div>
+    </div>
+    <div class="char-list" id="charList"></div>
+    <div class="sidebar-footer">
+      <button class="btn btn-gold" onclick="newCharacter()">+ New Character</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-gold btn-sm" style="flex:1;" onclick="exportVault()">Export</button>
+        <button class="btn btn-gold btn-sm" style="flex:1;" onclick="triggerImport()">Import</button>
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="showExtractionPrompt()">Get Extraction Prompt</button>
+      <input type="file" id="importFile" accept=".json" style="display:none;" onchange="handleImport(event)">
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="main-header">
+      <div class="main-title" id="mainTitle">Character Vault</div>
+      <div class="tab-bar" id="tabBar" style="display:none;">
+        <button class="tab active" onclick="switchTab('post')" id="tab-post">Write Post</button>
+        <button class="tab" onclick="switchTab('character')" id="tab-character">Character</button>
+        <button class="tab" onclick="switchTab('lore')" id="tab-lore">Lore</button>
+        <button class="tab" onclick="switchTab('notes')" id="tab-notes">Notes</button>
+        <button class="tab" onclick="switchTab('history')" id="tab-history">History</button>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+    <div class="status-bar" id="statusBar">Select or create a character to begin.</div>
+  </div>
+</div>
+<div id="modalArea"></div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let state = {
+  characters: [],
+  activeId: null,
+  activeTab: 'post',
+  activeLore: new Set(),
+  collapsedGames: new Set(),
+  postForm: { forum: '', direction: '', tone: '', response: '' },
+  savedResponse: '',
+  parsedScene: null,
+  parsedRecentEvents: null
+};
+
+const VOICE_LIMIT = 600;
+const SCENE_LIMIT = 400;
+const RECENT_LIMIT = 400;
+const HISTORY_MAX = 10;
+
+// ─── STORAGE ──────────────────────────────────────────────────────────────────
+async function save(character) {
+  if (character) {
+    await window.electronAPI.saveCharacter(character);
+  }
+}
+
+async function saveAll() {
+  await window.electronAPI.saveAllCharacters(state.characters);
+}
+
+async function load() {
+  try {
+    const chars = await window.electronAPI.loadCharacters();
+    if (chars && chars.length) {
+      state.characters = chars;
+    } else {
+      // Migrate from localStorage if files are empty
+      try {
+        const d = localStorage.getItem('pbp_vault_v3') || localStorage.getItem('pbp_vault_v2');
+        if (d) {
+          state.characters = JSON.parse(d);
+          await saveAll();
+          setStatus('Migrated ' + state.characters.length + ' character(s) from local storage to files.');
+        }
+      } catch(e) { state.characters = []; }
+    }
+  } catch(e) { state.characters = []; }
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function getChar(id) { return state.characters.find(c => c.id === id); }
+function activeChar() { return getChar(state.activeId); }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function setStatus(msg) { document.getElementById('statusBar').textContent = msg; }
+function closeModal() { document.getElementById('modalArea').innerHTML = ''; }
+
+function updateCounter(id, len, limit) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = len + ' / ' + limit;
+  el.className = 'char-limit ' + (len > limit ? 'over' : len > limit * 0.8 ? 'warn' : 'ok');
+}
+
+function snapshotPostForm() {
+  const f = document.getElementById('forumContext');
+  const d = document.getElementById('direction');
+  const t = document.getElementById('toneNotes');
+  const r = document.getElementById('responsePaste');
+  if (f) state.postForm.forum = f.value;
+  if (d) state.postForm.direction = d.value;
+  if (t) state.postForm.tone = t.value;
+  if (r) state.postForm.response = r.value;
+}
+
+function restorePostForm() {
+  const f = document.getElementById('forumContext');
+  const d = document.getElementById('direction');
+  const t = document.getElementById('toneNotes');
+  const r = document.getElementById('responsePaste');
+  if (f) f.value = state.postForm.forum;
+  if (d) d.value = state.postForm.direction;
+  if (t) t.value = state.postForm.tone;
+  if (r) r.value = state.postForm.response;
+  updateResponseCount();
+}
+
+// ─── CHARACTER CRUD ───────────────────────────────────────────────────────────
+function newCharacter() {
+  const c = { id: Date.now().toString(), name: 'New Character', game: '', system: '', voice: '', relationships: '', lore: [], scene: '', recentEvents: '', notes: '', history: [] };
+  state.characters.push(c);
+  save(c); selectChar(c.id); switchTab('character');
+}
+
+function selectChar(id) {
+  state.activeId = id;
+  state.activeLore = new Set();
+  state.postForm = { forum: '', direction: '', tone: '', response: '' };
+  state.savedResponse = '';
+  state.parsedScene = null;
+  state.parsedRecentEvents = null;
+  render();
+}
+
+function updateField(id, field, value) {
+  const c = getChar(id);
+  if (c) { c[field] = value; save(c); }
+}
+
+function deleteChar(id) {
+  const c = getChar(id);
+  if (!c) return;
+  document.getElementById('modalArea').innerHTML = `
+    <div class="modal-overlay"><div class="modal">
+      <h3>Delete Character</h3>
+      <p>Permanently remove <strong style="font-style:normal;">${escHtml(c.name)}</strong> from the vault? Export first if you want a backup.</p>
+      <div class="modal-actions">
+        <button class="btn btn-gold btn-sm" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-red btn-sm" onclick="confirmDelete('${id}')">Yes, Delete</button>
+      </div>
+    </div></div>`;
+}
+
+async function confirmDelete(id) {
+  state.characters = state.characters.filter(c => c.id !== id);
+  if (state.activeId === id) state.activeId = null;
+  await window.electronAPI.deleteCharacter(id);
+  closeModal(); render();
+  setStatus('Character removed from vault.');
+}
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  if (state.activeTab === 'post') snapshotPostForm();
+  state.activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const el = document.getElementById('tab-' + tab);
+  if (el) el.classList.add('active');
+  renderContent();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() { renderSidebar(); renderHeader(); renderContent(); }
+
+function renderSidebar() {
+  const list = document.getElementById('charList');
+  if (!state.characters.length) {
+    list.innerHTML = '<div style="padding:16px;font-size:13px;color:var(--ink-faint);font-style:italic;text-align:center;">No characters yet.</div>';
+    return;
+  }
+  // Group by system, preserving array order
+  const groups = [];
+  const seen = {};
+  state.characters.forEach(c => {
+    const key = c.system || '';
+    if (!seen[key]) { seen[key] = []; groups.push({ key, chars: seen[key] }); }
+    seen[key].push(c);
+  });
+  list.innerHTML = groups.map(({ key, chars }) => {
+    const collapsed = state.collapsedGames.has(key);
+    const label = key || 'No System Set';
+    const items = chars.map((c, pi) => `
+      <div class="char-item ${c.id===state.activeId?'active':''}" onclick="selectChar('${c.id}')">
+        <div class="char-name">${escHtml(c.name||'Unnamed')}</div>
+        ${c.game?`<div class="char-meta">${escHtml(c.game)}</div>`:''}
+        ${(c.voice||'').length>VOICE_LIMIT?'<div class="char-warning">⚠ Voice over limit</div>':''}
+        <div class="char-move-btns">
+          <button class="char-move-btn" onclick="event.stopPropagation();moveChar('${c.id}',-1)" ${pi===0?'disabled':''} title="Move up">▲</button>
+          <button class="char-move-btn" onclick="event.stopPropagation();moveChar('${c.id}',1)" ${pi===chars.length-1?'disabled':''} title="Move down">▼</button>
+        </div>
+      </div>`).join('');
+    return `
+      <div class="game-group">
+        <div class="game-group-header" onclick="toggleGameGroup(${JSON.stringify(key)})">
+          <span class="game-group-label">${escHtml(label)}</span>
+          <span class="group-chevron ${collapsed?'collapsed':''}">▾</span>
+        </div>
+        <div ${collapsed?'style="display:none;"':''}>${items}</div>
+      </div>`;
+  }).join('');
+}
+
+function toggleGameGroup(key) {
+  if (state.collapsedGames.has(key)) state.collapsedGames.delete(key);
+  else state.collapsedGames.add(key);
+  renderSidebar();
+}
+
+function moveChar(id, dir) {
+  const c = getChar(id);
+  if (!c) return;
+  const system = c.system || '';
+  const peers = state.characters.filter(x => (x.system||'') === system);
+  const pi = peers.indexOf(c);
+  const ni = pi + dir;
+  if (ni < 0 || ni >= peers.length) return;
+  const swapWith = peers[ni];
+  const ai = state.characters.indexOf(c);
+  const bi = state.characters.indexOf(swapWith);
+  state.characters[ai] = swapWith;
+  state.characters[bi] = c;
+  saveAll();
+  renderSidebar();
+}
+
+function renderHeader() {
+  const c = activeChar();
+  document.getElementById('mainTitle').textContent = c ? (c.name||'Unnamed') : 'Character Vault';
+  document.getElementById('tabBar').style.display = c ? 'flex' : 'none';
+}
+
+function renderContent() {
+  const c = activeChar();
+  const el = document.getElementById('content');
+  if (!c) { el.innerHTML = welcomeHTML(); return; }
+  switch(state.activeTab) {
+    case 'character': el.innerHTML = characterTabHTML(c); break;
+    case 'lore':      el.innerHTML = loreTabHTML(c); break;
+    case 'post':      el.innerHTML = postTabHTML(c); restorePostForm(); break;
+    case 'notes':     el.innerHTML = notesTabHTML(c); break;
+    case 'history':   el.innerHTML = historyTabHTML(c); break;
+  }
+  attachListeners();
+}
+
+// ─── WELCOME ──────────────────────────────────────────────────────────────────
+function welcomeHTML() {
+  return `<div class="welcome">
+    <div class="welcome-seal">⚔</div>
+    <h2>Welcome to the Vault</h2>
+    <p>Each character keeps their voice, lore, and current scene separate — so every post uses only the context it needs.</p>
+    <p>Create a character, or use the Extraction Prompt to pull one from an existing chat.</p>
+  </div>`;
+}
+
+// ─── CHARACTER TAB ────────────────────────────────────────────────────────────
+function characterTabHTML(c) {
+  const vLen = (c.voice||'').length;
+  const vClass = vLen>VOICE_LIMIT?'over':vLen>VOICE_LIMIT*0.8?'warn':'ok';
+  const sLen = (c.scene||'').length;
+  const rLen = (c.recentEvents||'').length;
+  return `
+  <div class="section-title">Identity</div>
+  <div class="section-desc">The anchor. Loads every session.</div>
+  <label>Character Name</label>
+  <input type="text" value="${escAttr(c.name)}" oninput="updateField('${c.id}','name',this.value);renderSidebar();renderHeader()">
+  <div class="row mt">
+    <div><label>Game / Campaign</label><input type="text" value="${escAttr(c.game)}" oninput="updateField('${c.id}','game',this.value)"></div>
+    <div><label>System</label><input type="text" value="${escAttr(c.system)}" placeholder="e.g. Through the Breach" oninput="updateField('${c.id}','system',this.value);renderSidebar()"></div>
+  </div>
+  <hr class="section-divider">
+  <div class="section-title">Voice &amp; Personality</div>
+  <div class="section-desc">How this character thinks, speaks, moves. Compressed — loads every prompt.</div>
+  <label>Voice (aim for under ${VOICE_LIMIT} characters)</label>
+  <textarea id="f-voice" rows="5" oninput="updateField('${c.id}','voice',this.value);updateCounter('voice-count',this.value.length,${VOICE_LIMIT})">${escHtml(c.voice)}</textarea>
+  <div class="char-limit ${vClass}" id="voice-count">${vLen} / ${VOICE_LIMIT}</div>
+  <div class="field-hint">Tone, mannerisms, speech patterns, what they avoid. Dense beats vague.</div>
+  <label>Key Relationships</label>
+  <textarea rows="3" oninput="updateField('${c.id}','relationships',this.value)">${escHtml(c.relationships)}</textarea>
+  <div class="field-hint">Name + one-line summary each. Expand in Lore if needed.</div>
+  <hr class="section-divider">
+  <div class="section-title">Live State</div>
+  <div class="section-desc">Updated after each post.</div>
+  <label>Current Scene / Location / Mood</label>
+  <textarea id="f-scene" rows="3" oninput="updateField('${c.id}','scene',this.value);updateCounter('scene-count',this.value.length,${SCENE_LIMIT})">${escHtml(c.scene)}</textarea>
+  <div class="char-limit ${sLen>SCENE_LIMIT?'over':'ok'}" id="scene-count">${sLen} / ${SCENE_LIMIT}</div>
+  <label>What Just Happened</label>
+  <textarea id="f-recent" rows="3" oninput="updateField('${c.id}','recentEvents',this.value);updateCounter('recent-count',this.value.length,${RECENT_LIMIT})">${escHtml(c.recentEvents)}</textarea>
+  <div class="char-limit ${rLen>RECENT_LIMIT?'over':'ok'}" id="recent-count">${rLen} / ${RECENT_LIMIT}</div>
+  <div class="field-hint">2–3 bullet points. Replace old ones once they've shaped the lore.</div>
+  <hr class="section-divider">
+  <button class="btn btn-red btn-sm" onclick="deleteChar('${c.id}')">Delete Character</button>`;
+}
+
+// ─── LORE TAB ─────────────────────────────────────────────────────────────────
+function loreTabHTML(c) {
+  const items = (c.lore||[]).map((l,i) => `
+    <div class="lore-item">
+      <div class="lore-item-body">
+        <input type="text" value="${escAttr(l.name)}" style="font-family:'Cinzel',serif;font-size:12px;font-weight:600;margin-bottom:6px;" placeholder="Snippet name" oninput="updateLore('${c.id}',${i},'name',this.value)">
+        <textarea rows="2" style="font-size:13px;line-height:1.5;" placeholder="What does this character know?" oninput="updateLore('${c.id}',${i},'text',this.value)">${escHtml(l.text)}</textarea>
+      </div>
+      <button class="btn btn-red btn-sm" style="margin-top:4px;" onclick="removeLore('${c.id}',${i})">✕</button>
+    </div>`).join('');
+  return `
+  <div class="section-title">Lore Snippets</div>
+  <div class="section-desc">Named setting knowledge. Toggle which ones load into a post.</div>
+  <div class="lore-list">${items||'<div style="color:var(--ink-faint);font-style:italic;font-size:13px;margin-top:8px;">No snippets yet.</div>'}</div>
+  <hr class="section-divider">
+  <div class="section-title">Add Snippet</div>
+  <label>Name</label>
+  <input type="text" id="lore-name" placeholder="e.g. The Breach, Guild Politics">
+  <label>Content</label>
+  <textarea id="lore-text" rows="3" placeholder="What does this character know about this topic?"></textarea>
+  <div style="margin-top:10px;"><button class="btn btn-gold btn-sm" style="width:auto;" onclick="addLore('${c.id}')">Add Snippet</button></div>`;
+}
+
+function addLore(charId) {
+  const name = document.getElementById('lore-name').value.trim();
+  const text = document.getElementById('lore-text').value.trim();
+  if (!name || !text) return;
+  const c = getChar(charId);
+  if (!c.lore) c.lore = [];
+  c.lore.push({name, text});
+  save(c); renderContent();
+}
+
+function updateLore(charId, idx, field, value) {
+  const c = getChar(charId);
+  if (!c || !c.lore[idx]) return;
+  c.lore[idx][field] = value;
+  save(c);
+}
+
+function removeLore(charId, idx) {
+  const c = getChar(charId);
+  c.lore.splice(idx, 1);
+  save(c); renderContent();
+}
+
+// ─── NOTES TAB ────────────────────────────────────────────────────────────────
+function notesTabHTML(c) {
+  return `
+  <div class="section-title">Scratch Pad</div>
+  <div class="section-desc">For your eyes only. Never loaded into prompts.</div>
+  <textarea id="f-notes" rows="22" style="font-size:14px;line-height:1.65;" oninput="updateField('${c.id}','notes',this.value)">${escHtml(c.notes||'')}</textarea>`;
+}
+
+// ─── HISTORY TAB ──────────────────────────────────────────────────────────────
+function historyTabHTML(c) {
+  const hist = (c.history||[]).slice().reverse();
+  if (!hist.length) return `
+    <div class="section-title">Post History</div>
+    <div class="section-desc">The last ${HISTORY_MAX} posts appear here after you log them.</div>
+    <div style="color:var(--ink-faint);font-style:italic;font-size:14px;margin-top:24px;text-align:center;">No posts logged yet.</div>`;
+  return `
+  <div class="section-title">Post History</div>
+  <div class="section-desc">Last ${HISTORY_MAX} posts, most recent first.</div>
+  ${hist.map((h,i) => `
+    <div class="history-item">
+      <div class="history-meta">
+        <span>${escHtml(h.date)} — ${escHtml(h.direction||'')}</span>
+        <button class="btn btn-gold btn-sm" onclick="copyHistoryItem(${hist.length-1-i})">Copy</button>
+      </div>
+      <div class="history-text">${escHtml(h.post)}</div>
+    </div>`).join('')}`;
+}
+
+function copyHistoryItem(idx) {
+  const c = activeChar();
+  if (!c || !c.history[idx]) return;
+  window.electronAPI.writeClipboard(c.history[idx].post);
+  setStatus('Copied.');
+}
+
+function addToHistory(charId, post, direction) {
+  const c = getChar(charId);
+  if (!c) return;
+  if (!c.history) c.history = [];
+  c.history.push({
+    date: new Date().toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}),
+    direction: direction.substring(0,60)+(direction.length>60?'…':''),
+    post
+  });
+  if (c.history.length > HISTORY_MAX) c.history = c.history.slice(-HISTORY_MAX);
+  save(c);
+}
+
+// ─── PROMPT BUILDER ───────────────────────────────────────────────────────────
+function buildSystemPrompt(c) {
+  const loreParts = (c.lore||[]).filter((_,i) => state.activeLore.has(i)).map(l => '['+l.name+']\n'+l.text).join('\n\n');
+  return `You are a play-by-post writing assistant. Write immersive, in-character forum posts for the character described below. Match their voice precisely. Never break character. Do not add author notes.
+
+== CHARACTER ==
+Name: ${c.name||'Unknown'}
+Game: ${c.game||'Unknown'} | System: ${c.system||'Unknown'}
+
+VOICE & PERSONALITY:
+${c.voice||'Not specified.'}
+
+RELATIONSHIPS:
+${c.relationships||'Not specified.'}
+
+== CURRENT STATE ==
+Scene / Location / Mood:
+${c.scene||'Not specified.'}
+
+Recent Events:
+${c.recentEvents||'Not specified.'}
+${loreParts?'\n== LORE ==\n'+loreParts:''}
+== WRITING RULES ==
+- Stay in third-person limited unless the game uses first-person
+- Show internal state through action and sensation, not declaration
+- Match the tone of the forum context provided
+- Do not summarise — write the actual post
+- End at a natural beat
+
+== PBP ETIQUETTE — ABSOLUTE RULES ==
+- REACTIVE ONLY: React only to information already in the forum posts provided. Never invent new facts, NPCs, locations, or events not already established in the thread.
+- NO GODMODDING: Never write the actions, words, thoughts, or reactions of other players characters or GM-controlled NPCs. Write only what this character does, says, thinks, and attempts.
+- NO OUTCOMES: Never determine success or failure of any action. Write the attempt only. The GM decides what happens. Never write "he succeeded" or "the lock clicked open" — write "he tried" or "he reached for the lock".
+- NO NEW INFORMATION: Do not add backstory, world details, or lore not already established in the provided context. If it is not in the character sheet or the forum posts, it does not exist yet.
+- PUNCTUATION: Never use em dashes (—) or double hyphens (--) under any circumstances. Use proper punctuation instead: commas for parenthetical phrases, semicolons to join related clauses, colons to introduce or expand, and full stops to end thoughts. Rewrite any sentence that feels like it needs a dash. There is always a better construction.`;
+}
+
+function buildFullPrompt(c, forum, direction, tone) {
+  const system = buildSystemPrompt(c);
+  const user = [
+    forum ? '== RECENT FORUM POSTS ==\n' + forum : '',
+    '== DIRECTION ==\n' + direction,
+    tone ? '== NOTES ==\n' + tone : '',
+    `== AFTER THE POST ==
+Once you have written the post, append the following on a new line, exactly as formatted:
+
+--- STATE UPDATE ---
+SCENE (max 400 chars): [updated scene, location, and mood based on what just happened]
+RECENT EVENTS (max 400 chars): [2–3 bullet points of what just happened that should colour the next post]
+--- END STATE UPDATE ---
+
+Keep each value within its character limit. The writer will copy these directly into the character sheet.`
+  ].filter(Boolean).join('\n\n');
+  return system + '\n\n---\n\n' + user;
+}
+
+// ─── POST TAB ─────────────────────────────────────────────────────────────────
+function postTabHTML(c) {
+  const loreToggles = (c.lore||[]).length ? `
+    <div style="margin-top:8px;">
+      <div style="font-size:12px;color:var(--ink-faint);font-style:italic;margin-bottom:6px;">Toggle lore to include:</div>
+      <div class="lore-toggles">${c.lore.map((l,i) =>
+        `<button class="lore-toggle ${state.activeLore.has(i)?'on':''}" onclick="toggleLore(${i})">${escHtml(l.name)}</button>`
+      ).join('')}</div>
+    </div>` : '';
+
+  const tokenEst = Math.round(buildSystemPrompt(c).length / 3.8);
+
+  const responseSection = `
+    <hr class="section-divider">
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-label">Paste Claude's Response</div>
+        <div class="field-hint" style="margin-bottom:10px;">After Claude writes the post, paste it here, then click Log Post to save it and update the character state.</div>
+        <textarea id="responsePaste" rows="6" placeholder="Paste Claude's post here..."></textarea>
+        <div id="response-count" style="font-size:11px;color:var(--ink-faint);text-align:right;margin-top:3px;font-style:italic;"></div>
+        <div class="btn-row">
+          <button class="btn btn-green btn-sm" onclick="saveAndLogResponse()">Log Post &amp; Update State →</button>
+        </div>
+      </div>
+    </div>`
+
+  return `<div style="display:flex;flex-direction:column;gap:4px;">
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <div class="step-label">Context</div>
+      <div class="context-strip"><strong>Voice</strong>${c.voice?escHtml(c.voice.substring(0,120))+(c.voice.length>120?'…':''):'<em>Not set — add in Character tab</em>'}</div>
+      <div class="context-strip" style="margin-top:6px;"><strong>Scene</strong>${c.scene?escHtml(c.scene):'<em>Not set</em>'}</div>
+      <div class="context-strip" style="margin-top:6px;"><strong>Recent Events</strong>${c.recentEvents?escHtml(c.recentEvents):'<em>Not set</em>'}</div>
+      ${loreToggles}
+      <div class="token-estimate">~${tokenEst} tokens of context</div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <div class="step-label">Build &amp; Copy Prompt</div>
+      <label>Forum context (paste last 1–3 posts)</label>
+      <textarea id="forumContext" rows="3" placeholder="Paste recent forum posts here..." oninput="state.postForm.forum=this.value"></textarea>
+      <label>Your direction</label>
+      <textarea id="direction" rows="3" placeholder="e.g. Thraeven enters and clocks that someone is lying. He doesn't announce it." oninput="state.postForm.direction=this.value"></textarea>
+      <label>Tone / length notes (optional)</label>
+      <input type="text" id="toneNotes" placeholder="e.g. Keep under 200 words, heavy on internal monologue" oninput="state.postForm.tone=this.value">
+      <div class="btn-row">
+        <button class="btn btn-ink" style="width:auto;padding:9px 24px;" onclick="buildAndCopy()">Build &amp; Copy Prompt</button>
+        <button class="btn btn-gold btn-sm" onclick="previewPrompt()">Preview</button>
+      </div>
+      <div class="field-hint" style="margin-top:8px;">Copies the full prompt to clipboard. Open a new claude.ai chat and paste.</div>
+    </div>
+  </div>
+
+  ${responseSection}
+  </div>`;
+}
+
+function toggleLore(idx) {
+  if (state.activeLore.has(idx)) state.activeLore.delete(idx);
+  else state.activeLore.add(idx);
+  snapshotPostForm();
+  renderContent();
+}
+
+async function buildAndCopy() {
+  const c = activeChar();
+  if (!c) return;
+  const forum = document.getElementById('forumContext')?.value?.trim()||'';
+  const direction = document.getElementById('direction')?.value?.trim()||'';
+  const tone = document.getElementById('toneNotes')?.value?.trim()||'';
+  if (!direction) { setStatus('Add a direction first.'); return; }
+  state.postForm = { forum, direction, tone };
+  const prompt = buildFullPrompt(c, forum, direction, tone);
+  await window.electronAPI.writeClipboard(prompt);
+  setStatus('Prompt copied — open a new claude.ai chat and paste it in.');
+}
+
+function previewPrompt() {
+  const c = activeChar();
+  if (!c) return;
+  const forum = document.getElementById('forumContext')?.value?.trim()||'';
+  const direction = document.getElementById('direction')?.value?.trim()||'';
+  const tone = document.getElementById('toneNotes')?.value?.trim()||'';
+  state.postForm = { forum, direction, tone };
+  const prompt = buildFullPrompt(c, forum, direction, tone);
+  document.getElementById('modalArea').innerHTML = `
+    <div class="modal-overlay"><div class="modal" style="max-width:660px;">
+      <h3>Prompt Preview</h3>
+      <p>This is exactly what will be copied to clipboard.</p>
+      <div class="prompt-box">${escHtml(prompt)}</div>
+      <div class="modal-actions">
+        <button class="btn btn-gold btn-sm" onclick="closeModal()">Close</button>
+      </div>
+    </div></div>`;
+}
+
+function parseStateUpdate(raw) {
+  const START = '--- STATE UPDATE ---';
+  const END   = '--- END STATE UPDATE ---';
+  const si = raw.indexOf(START);
+  if (si === -1) return { post: raw, scene: null, recentEvents: null };
+  const post  = raw.slice(0, si).trim();
+  const block = raw.slice(si + START.length, raw.indexOf(END, si) > -1 ? raw.indexOf(END, si) : undefined);
+  const sceneMatch  = block.match(/SCENE \(max \d+ chars\):\s*([\s\S]*?)(?=RECENT EVENTS|$)/);
+  const recentMatch = block.match(/RECENT EVENTS \(max \d+ chars\):\s*([\s\S]*?)$/);
+  return {
+    post,
+    scene:        sceneMatch  ? sceneMatch[1].trim()  : null,
+    recentEvents: recentMatch ? recentMatch[1].trim() : null
+  };
+}
+
+function saveAndLogResponse() {
+  const val = document.getElementById('responsePaste')?.value?.trim()||'';
+  if (!val) { setStatus('Paste a response first.'); return; }
+  const parsed = parseStateUpdate(val);
+  state.savedResponse    = parsed.post;
+  state.parsedScene      = parsed.scene;
+  state.parsedRecentEvents = parsed.recentEvents;
+  state.postForm.response = '';   // clear paste box after logging
+  snapshotPostForm();
+  showUpdateModal();
+}
+
+function clearResponse() {
+  state.savedResponse = '';
+  renderContent();
+}
+
+function logAndUpdate() {
+  const c = activeChar();
+  if (!c || !state.savedResponse) return;
+  showUpdateModal();
+}
+
+// ─── UPDATE MODAL ─────────────────────────────────────────────────────────────
+function showUpdateModal() {
+  const c = activeChar();
+  if (!c) return;
+  const autofilled = state.parsedScene !== null || state.parsedRecentEvents !== null;
+  const sceneVal  = state.parsedScene      !== null ? state.parsedScene      : (c.scene||'');
+  const recentVal = state.parsedRecentEvents !== null ? state.parsedRecentEvents : (c.recentEvents||'');
+  document.getElementById('modalArea').innerHTML = `
+    <div class="modal-overlay"><div class="modal">
+      <h3>Update Character State</h3>
+      ${autofilled
+        ? '<p style="color:var(--green-dark);font-size:13px;font-style:italic;margin-bottom:12px;">State fields filled from Claude\'s response — review before saving.</p>'
+        : '<p>Post logged. Update the live state so the next session starts accurate.</p>'}
+      <label>Current Scene</label>
+      <textarea id="m-scene" rows="3">${escHtml(sceneVal)}</textarea>
+      <div class="char-limit ${sceneVal.length > SCENE_LIMIT ? 'over' : 'ok'}" id="m-scene-count">${sceneVal.length} / ${SCENE_LIMIT}</div>
+      <label>Recent Events</label>
+      <textarea id="m-recent" rows="3">${escHtml(recentVal)}</textarea>
+      <div class="char-limit ${recentVal.length > RECENT_LIMIT ? 'over' : 'ok'}" id="m-recent-count">${recentVal.length} / ${RECENT_LIMIT}</div>
+      <div class="modal-actions">
+        <button class="btn btn-gold btn-sm" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-ink btn-sm" onclick="saveUpdate('${c.id}')">Save &amp; Close</button>
+      </div>
+    </div></div>`;
+  document.getElementById('m-scene').addEventListener('input', function() { updateCounter('m-scene-count', this.value.length, SCENE_LIMIT); });
+  document.getElementById('m-recent').addEventListener('input', function() { updateCounter('m-recent-count', this.value.length, RECENT_LIMIT); });
+}
+
+function saveUpdate(charId) {
+  const c = getChar(charId);
+  c.scene = document.getElementById('m-scene').value;
+  c.recentEvents = document.getElementById('m-recent').value;
+  if (state.savedResponse) {
+    addToHistory(charId, state.savedResponse, state.postForm.direction);
+  }
+  save(c); closeModal();
+  state.savedResponse = '';
+  state.parsedScene = null;
+  state.parsedRecentEvents = null;
+  state.postForm = { forum: '', direction: '', tone: '', response: '' };
+  setStatus('Post logged. State updated. Check the History tab to confirm.');
+  render();
+}
+
+// ─── EXPORT / IMPORT ──────────────────────────────────────────────────────────
+async function exportVault() {
+  const data = JSON.stringify(state.characters, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'character-vault-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus('Vault exported.');
+}
+
+function triggerImport() { document.getElementById('importFile').click(); }
+
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    try {
+      const raw = JSON.parse(ev.target.result);
+      const incoming = Array.isArray(raw) ? raw : [raw];
+      if (!incoming.every(c => c.name)) throw new Error('Missing name field');
+      const normalised = incoming.map(c => ({
+        id: c.id || Date.now().toString() + Math.random().toString(36).slice(2),
+        name: c.name||'Imported Character', game: c.game||'', system: c.system||'',
+        voice: c.voice||'', relationships: c.relationships||'',
+        lore: Array.isArray(c.lore) ? c.lore : [],
+        scene: c.scene||'', recentEvents: c.recentEvents||c.recent_events||'',
+        notes: c.notes||'', history: Array.isArray(c.history) ? c.history : []
+      }));
+      if (!confirm('Import ' + normalised.length + ' character(s)? Existing characters with the same ID will be updated.')) return;
+      const existingIds = new Set(state.characters.map(c => c.id));
+      let added = 0;
+      normalised.forEach(c => {
+        if (existingIds.has(c.id)) { Object.assign(state.characters.find(x => x.id===c.id), c); }
+        else { state.characters.push(c); added++; }
+      });
+      await saveAll(); render();
+      setStatus('Import complete — ' + added + ' new, ' + (normalised.length-added) + ' updated.');
+    } catch(err) { setStatus('Import failed — not a valid vault or extraction file.'); }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ─── EXTRACTION PROMPT ────────────────────────────────────────────────────────
+function showExtractionPrompt() {
+  const prompt = `I need you to extract my character's information from this conversation and output it as a single JSON object I can import into my PBP writing tool.
+
+Output ONLY valid JSON — no preamble, no explanation, no markdown code fences. Just the raw JSON object.
+
+Use exactly this schema:
+
+{
+  "name": "Character's full name",
+  "game": "Name of the game or campaign",
+  "system": "Game system (e.g. Through the Breach, D&D 5e)",
+  "voice": "How this character speaks, thinks, and moves. Compressed to under 600 characters. Tone, mannerisms, speech patterns, what they avoid. Dense and specific.",
+  "relationships": "Key relationships as a short list. One line per person: Name — relationship summary.",
+  "lore": [
+    { "name": "Lore topic name", "text": "What this character knows about this topic. Keep dense." }
+  ],
+  "scene": "Current scene, location, and mood. 2-3 sentences maximum.",
+  "recentEvents": "2-3 bullet points of what just happened that should colour the next post.",
+  "notes": ""
+}
+
+Rules:
+- voice must be under 600 characters
+- scene must be under 400 characters
+- recentEvents must be under 400 characters
+- lore array should have one entry per distinct topic
+- If a field has no information, use an empty string or empty array
+- Output only the JSON object, nothing else`;
+
+  document.getElementById('modalArea').innerHTML = `
+    <div class="modal-overlay"><div class="modal" style="max-width:600px;">
+      <h3>Character Extraction Prompt</h3>
+      <p>Drop this at the end of your character chat in Claude or ChatGPT. Save the JSON output as a .json file, then Import it into the vault.</p>
+      <div class="prompt-box" id="extractPromptBox">${escHtml(prompt)}</div>
+      <div class="modal-actions">
+        <button class="btn btn-gold btn-sm" onclick="closeModal()">Close</button>
+        <button class="btn btn-green btn-sm" onclick="copyExtractionPrompt()">Copy Prompt</button>
+      </div>
+    </div></div>`;
+}
+
+function copyExtractionPrompt() {
+  const prompt = document.getElementById('extractPromptBox').textContent;
+  window.electronAPI.writeClipboard(prompt);
+  setStatus('Extraction prompt copied.');
+}
+
+function updateResponseCount() {
+  const el = document.getElementById('responsePaste');
+  const counter = document.getElementById('response-count');
+  if (!el || !counter) return;
+  const text = el.value;
+  if (!text.trim()) { counter.textContent = ''; return; }
+  const words = text.trim().split(/\s+/).length;
+  counter.textContent = words + ' words · ' + text.length + ' chars';
+}
+
+// ─── LISTENERS ────────────────────────────────────────────────────────────────
+function attachListeners() {
+  [['f-voice','voice-count',VOICE_LIMIT],['f-scene','scene-count',SCENE_LIMIT],['f-recent','recent-count',RECENT_LIMIT]].forEach(([fid,cid,lim]) => {
+    const el = document.getElementById(fid);
+    if (el) el.addEventListener('input', () => updateCounter(cid, el.value.length, lim));
+  });
+  const rp = document.getElementById('responsePaste');
+  if (rp) rp.addEventListener('input', updateResponseCount);
+}
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+async function boot() {
+  await load();
+  render();
+}
+boot();
+</script>
+</body>
+</html>
